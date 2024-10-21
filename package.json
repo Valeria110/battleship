@@ -7,6 +7,7 @@
   "scripts": {
     "start:dev": "nodemon --exec ts-node-dev src/index.ts",
     "start:prod": "webpack && node dist/index.cjs",
+    "start": "ts-node-dev src/index.ts",
     "prettier-fix": "prettier --write .",
     "lint": "eslint src/**/*.ts"
   },
@@ -15,6 +16,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^22.7.7",
+    "@types/uuid": "^10.0.0",
     "@types/ws": "^8.5.12",
     "@typescript-eslint/eslint-plugin": "^8.10.0",
     "@typescript-eslint/parser": "^8.10.0",
@@ -32,6 +34,8 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "dotenv": "^16.4.5",
+    "uuid": "^10.0.0",
     "ws": "^8.18.0"
   }
 }
