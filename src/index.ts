@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 import { httpServer } from './http_server';
 import 'dotenv/config';
 import { parseMessage } from './utils';
-import { handleRegMessage } from './ws_server/hanldeMessages';
+import { handleCreateRoomMessage, handleRegMessage } from './ws_server/hanldeMessages';
 import { IWebsocket, MessageType } from './types/types';
 import { v4 as uuidv4 } from 'uuid';
 import { players } from './db/db';
@@ -12,7 +12,7 @@ const HTTP_PORT = Number(process.env.HTTP_PORT) | 8181;
 
 httpServer.listen(HTTP_PORT);
 
-const wss = new WebSocketServer({
+export const wss = new WebSocketServer({
   port: WS_PORT,
 });
 wss.on('listening', () => {
@@ -32,6 +32,10 @@ wss.on('connection', function connection(ws: IWebsocket) {
         case MessageType.Reg:
           handleRegMessage(ws, parsedMessage);
           break;
+
+        case MessageType.Create_room:
+          handleCreateRoomMessage(ws);
+          break;
       }
     } catch (err) {
       console.error(err);
@@ -39,7 +43,7 @@ wss.on('connection', function connection(ws: IWebsocket) {
   });
 
   ws.on('close', () => {
-    console.log(`Websocket server connection with id ${ws.id} is closed`);
+    console.log(`Websocket server connection with id ${ws.id} was closed`);
     const playerName = ws.playerName;
     if (playerName) {
       players.delete(playerName);

@@ -1,11 +1,17 @@
 import { WebSocket } from 'ws';
+import { RoomUser } from '../types/types';
 
-interface playerData {
+interface PlayerData {
   password: string;
   index: string;
   socket: WebSocket;
 }
 
-const players = new Map<string, playerData>();
+interface RoomData {
+  roomUsers: RoomUser[];
+}
 
-export { players };
+const players = new Map<string, PlayerData>(); //<playerName, PlayerData>
+const rooms = new Map<string, RoomData>(); //<roomId, RoomData
+
+export { players, rooms, PlayerData };

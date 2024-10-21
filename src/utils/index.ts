@@ -1,5 +1,5 @@
 import { RawData } from 'ws';
-import { players } from '../db/db';
+import { PlayerData, players, rooms } from '../db/db';
 
 const parseMessage = (message: RawData) => {
   const parsedMessage = JSON.parse(message.toString());
@@ -26,4 +26,11 @@ const isCorrectPassword = (password: string, name: string) => {
   return password === player?.password;
 };
 
-export { parseMessage, createResponse, isPlayerExist, isCorrectPassword };
+const hasUserCreatedRoom = (playerName: string) => {
+  let isUserCreatedRoom = false;
+  rooms.forEach((value) => (isUserCreatedRoom = value.roomUsers.some((user) => user.name === playerName)));
+
+  return isUserCreatedRoom;
+};
+
+export { parseMessage, createResponse, isPlayerExist, isCorrectPassword, hasUserCreatedRoom };
