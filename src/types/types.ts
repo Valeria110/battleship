@@ -12,6 +12,7 @@ enum MessageType {
   Create_room = 'create_room',
   Update_room = 'update_room',
   Add_user_to_room = 'add_user_to_room',
+  Add_ships = 'add_ships',
   Start_game = 'start_game',
   Attack = 'attack',
   Turn = 'turn',
@@ -37,6 +38,10 @@ interface IAddUserToRoomMessage extends IMessage {
   };
 }
 
+interface IAddShipsMessage extends IMessage {
+  data: IGamePlayerData;
+}
+
 interface IRegData {
   name: string;
   password: string;
@@ -58,6 +63,32 @@ interface IWsResponse {
   id: number;
 }
 
+interface IGameData {
+  players: IGamePlayersData[];
+}
+
+interface IGamePlayerData {
+  gameId: string;
+  ships: [
+    {
+      position: {
+        x: number;
+        y: number;
+      };
+      direction: boolean;
+      length: number;
+      type: ShipType;
+    },
+  ];
+  indexPlayer: string;
+}
+
+interface IGamePlayersData extends IGamePlayerData {
+  ws: IWebsocket;
+}
+
+type ShipType = 'small' | 'medium' | 'large' | 'huge';
+
 export {
   IMessage,
   IRegData,
@@ -69,4 +100,6 @@ export {
   IUpdateRoomData,
   IWsResponse,
   IAddUserToRoomMessage,
+  IGameData,
+  IAddShipsMessage,
 };

@@ -1,5 +1,6 @@
 import { RawData } from 'ws';
 import { players, rooms } from '../db/db';
+import { IUpdateRoomData } from '../types/types';
 
 const parseMessage = (message: RawData) => {
   const parsedMessage = JSON.parse(message.toString());
@@ -33,4 +34,10 @@ const hasUserCreatedRoom = (playerName: string) => {
   return isUserCreatedRoom;
 };
 
-export { parseMessage, createResponse, isPlayerExist, isCorrectPassword, hasUserCreatedRoom };
+const convertRoomsMapToArr = () => {
+  const roomsArr: IUpdateRoomData[] = [];
+  rooms.forEach((value, key) => roomsArr.push({ roomId: key, roomUsers: value.roomUsers }));
+  return roomsArr;
+};
+
+export { parseMessage, createResponse, isPlayerExist, isCorrectPassword, hasUserCreatedRoom, convertRoomsMapToArr };

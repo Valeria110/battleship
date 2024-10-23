@@ -1,15 +1,15 @@
 import {
+  IAddShipsMessage,
   IAddUserToRoomMessage,
   IRegMessage,
   IUpdateRoomData,
   IWebsocket,
-  IWsResponse,
   MessageType,
   RoomUser,
 } from '../types/types';
 import { v4 as uuidv4 } from 'uuid';
-import { createResponse, hasUserCreatedRoom, isPlayerExist } from '../utils';
-import { players, rooms } from '../db/db';
+import { convertRoomsMapToArr, createResponse, hasUserCreatedRoom, isPlayerExist } from '../utils';
+import { gameDb, players, rooms } from '../db/db';
 import { wss } from '..';
 
 const handleRegMessage = (ws: IWebsocket, parsedMessage: IRegMessage) => {
@@ -55,19 +55,18 @@ const handleCreateRoomMessage = (ws: IWebsocket) => {
 
       rooms.set(uuidv4(), newRoom);
 
-      const roomsArr: IUpdateRoomData[] = [];
-      rooms.forEach((value, key) => roomsArr.push({ roomId: key, roomUsers: value.roomUsers }));
+      const roomsArr = convertRoomsMapToArr();
 
       const wsResponse = createResponse(MessageType.Create_room, roomsArr);
       ws.send(JSON.stringify(wsResponse));
 
-      const filteredRoomsArr = roomsArr.filter((room) => room.roomUsers.length === 1);
-      wss.clients.forEach((client) => handleUpdateRoom(client as IWebsocket, filteredRoomsArr));
+      wss.clients.forEach((client) => handleUpdateRoom(client as IWebsocket, roomsArr));
     }
   }
 };
 
-const handleUpdateRoom = (ws: IWebsocket, filteredRoomsArr: IUpdateRoomData[]) => {
+const handleUpdateRoom = (ws: IWebsocket, roomsArr: IUpdateRoomData[]) => {
+  const filteredRoomsArr = roomsArr.filter((room) => room.roomUsers.length === 1);
   const wsResponse = createResponse(MessageType.Update_room, filteredRoomsArr);
   ws.send(JSON.stringify(wsResponse));
 };
@@ -83,10 +82,8 @@ const handleAddUserToRoom = (ws: IWebsocket, parsedMessage: IAddUserToRoomMessag
         const userToBeAdded: RoomUser = { name: ws.playerName, index: playerIndex, ws };
         rooms.set(key, { roomUsers: [roomUser, userToBeAdded] });
 
-        const roomsArr: IUpdateRoomData[] = [];
-        rooms.forEach((value, key) => roomsArr.push({ roomId: key, roomUsers: value.roomUsers }));
-        const filteredRoomsArr = roomsArr.filter((room) => room.roomUsers.length === 1);
-        wss.clients.forEach((client) => handleUpdateRoom(client as IWebsocket, filteredRoomsArr));
+        const roomsArr = convertRoomsMapToArr();
+        wss.clients.forEach((client) => handleUpdateRoom(client as IWebsocket, roomsArr));
 
         handleCreateGame([roomUser, userToBeAdded]);
       }
@@ -108,4 +105,38 @@ const handleCreateGame = (roomUsers: RoomUser[]) => {
   });
 };
 
-export { handleRegMessage, handleCreateRoomMessage, handleAddUserToRoom };
+const handleAddShips = (ws: IWebsocket, parsedMessage: IAddShipsMessage) => {
+  const gameId = parsedMessage.data.gameId;
+  const gamePlayerData = {
+    ...parsedMessage.data,
+    ws,
+  };
+  const game = gameDb.get(gameId);
+
+  if (!game) {
+    gameDb.set(gameId, { players: [gamePlayerData] });
+  } else {
+    game.players.push(gamePlayerData);
+    startGame(gameId);
+  }
+};
+
+const startGame = (gameId: string) => {
+  const game = gameDb.get(gameId);
+
+  if (game) {
+    game.players.forEach((player) => {
+      const playerGameData = {
+        ships: player.ships,
+        currentPlayerIndex: player.indexPlayer,
+      };
+
+      const res = createResponse(MessageType.Start_game, playerGameData);
+      player.ws.send(JSON.stringify(res));
+    });
+  } else {
+    console.error(`Game with id ${gameId} does not exist`);
+  }
+};
+
+export { handleRegMessage, handleCreateRoomMessage, handleAddUserToRoom, handleAddShips };
