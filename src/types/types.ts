@@ -11,6 +11,7 @@ enum MessageType {
   Create_game = 'create_game',
   Create_room = 'create_room',
   Update_room = 'update_room',
+  Add_user_to_room = 'add_user_to_room',
   Start_game = 'start_game',
   Attack = 'attack',
   Turn = 'turn',
@@ -30,6 +31,12 @@ interface ICreateRoomMessage extends IMessage {
   data: string;
 }
 
+interface IAddUserToRoomMessage extends IMessage {
+  data: {
+    indexRoom: string;
+  };
+}
+
 interface IRegData {
   name: string;
   password: string;
@@ -38,6 +45,7 @@ interface IRegData {
 interface RoomUser {
   name: string;
   index: string;
+  ws: IWebsocket;
 }
 
 interface IUpdateRoomData {
@@ -60,4 +68,5 @@ export {
   RoomUser,
   IUpdateRoomData,
   IWsResponse,
+  IAddUserToRoomMessage,
 };

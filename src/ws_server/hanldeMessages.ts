@@ -1,4 +1,12 @@
-import { IRegMessage, IUpdateRoomData, IWebsocket, IWsResponse, MessageType, RoomUser } from '../types/types';
+import {
+  IAddUserToRoomMessage,
+  IRegMessage,
+  IUpdateRoomData,
+  IWebsocket,
+  IWsResponse,
+  MessageType,
+  RoomUser,
+} from '../types/types';
 import { v4 as uuidv4 } from 'uuid';
 import { createResponse, hasUserCreatedRoom, isPlayerExist } from '../utils';
 import { players, rooms } from '../db/db';
@@ -40,6 +48,7 @@ const handleCreateRoomMessage = (ws: IWebsocket) => {
           {
             name: ws.playerName,
             index: player.index,
+            ws,
           },
         ],
       };
@@ -63,4 +72,40 @@ const handleUpdateRoom = (ws: IWebsocket, filteredRoomsArr: IUpdateRoomData[]) =
   ws.send(JSON.stringify(wsResponse));
 };
 
-export { handleRegMessage, handleCreateRoomMessage };
+const handleAddUserToRoom = (ws: IWebsocket, parsedMessage: IAddUserToRoomMessage) => {
+  const roomIndex = parsedMessage.data.indexRoom;
+  rooms.forEach((_, key) => {
+    if (key === roomIndex) {
+      const roomUser = rooms.get(key)?.roomUsers[0];
+      const playerIndex = players.get(ws.playerName)?.index;
+
+      if (playerIndex && roomUser) {
+        const userToBeAdded: RoomUser = { name: ws.playerName, index: playerIndex, ws };
+        rooms.set(key, { roomUsers: [roomUser, userToBeAdded] });
+
+        const roomsArr: IUpdateRoomData[] = [];
+        rooms.forEach((value, key) => roomsArr.push({ roomId: key, roomUsers: value.roomUsers }));
+        const filteredRoomsArr = roomsArr.filter((room) => room.roomUsers.length === 1);
+        wss.clients.forEach((client) => handleUpdateRoom(client as IWebsocket, filteredRoomsArr));
+
+        handleCreateGame([roomUser, userToBeAdded]);
+      }
+    }
+  });
+};
+
+const handleCreateGame = (roomUsers: RoomUser[]) => {
+  const idGame = uuidv4();
+
+  roomUsers.forEach((roomUser) => {
+    const gameData = {
+      idGame,
+      idPlayer: roomUser.index,
+    };
+
+    const res = createResponse(MessageType.Create_game, gameData);
+    roomUser.ws.send(JSON.stringify(res));
+  });
+};
+
+export { handleRegMessage, handleCreateRoomMessage, handleAddUserToRoom };

@@ -1,5 +1,5 @@
 import { RawData } from 'ws';
-import { PlayerData, players, rooms } from '../db/db';
+import { players, rooms } from '../db/db';
 
 const parseMessage = (message: RawData) => {
   const parsedMessage = JSON.parse(message.toString());

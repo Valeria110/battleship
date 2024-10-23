@@ -2,7 +2,7 @@ import { WebSocketServer } from 'ws';
 import { httpServer } from './http_server';
 import 'dotenv/config';
 import { parseMessage } from './utils';
-import { handleCreateRoomMessage, handleRegMessage } from './ws_server/hanldeMessages';
+import { handleAddUserToRoom, handleCreateRoomMessage, handleRegMessage } from './ws_server/hanldeMessages';
 import { IWebsocket, MessageType } from './types/types';
 import { v4 as uuidv4 } from 'uuid';
 import { players } from './db/db';
@@ -35,6 +35,10 @@ wss.on('connection', function connection(ws: IWebsocket) {
 
         case MessageType.Create_room:
           handleCreateRoomMessage(ws);
+          break;
+
+        case MessageType.Add_user_to_room:
+          handleAddUserToRoom(ws, parsedMessage);
           break;
       }
     } catch (err) {
