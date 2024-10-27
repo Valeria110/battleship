@@ -1,0 +1,83 @@
+import { WebSocketServer } from 'ws';
+import { httpServer } from './http_server';
+import 'dotenv/config';
+import { parseMessage } from './utils';
+import {
+  handleAddShips,
+  handleAddUserToRoom,
+  handleAttack,
+  handleCreateRoomMessage,
+  handleRandomAttack,
+  handleRegMessage,
+} from './ws_server/hanldeMessages';
+import { IWebsocket, MessageType } from './types/types';
+import { gameDb, players, rooms } from './db/db';
+import { randomUUID } from 'crypto';
+
+const WS_PORT = Number(process.env.WS_PORT) | 3000;
+const HTTP_PORT = Number(process.env.HTTP_PORT) | 8181;
+
+httpServer.listen(HTTP_PORT);
+
+export const wss = new WebSocketServer({
+  port: WS_PORT,
+});
+wss.on('listening', () => {
+  console.log(`Websocket server is listening on ws://localhost:${WS_PORT}`);
+});
+
+wss.on('connection', function connection(ws: IWebsocket) {
+  ws.id = randomUUID();
+
+  ws.on('error', console.error);
+
+  ws.on('message', function message(data) {
+    try {
+      const parsedMessage = parseMessage(data);
+      const messageType = parsedMessage.type;
+
+      switch (messageType) {
+        case MessageType.Reg:
+          handleRegMessage(ws, parsedMessage);
+          break;
+
+        case MessageType.Create_room:
+          handleCreateRoomMessage(ws);
+          break;
+
+        case MessageType.Add_user_to_room:
+          handleAddUserToRoom(ws, parsedMessage);
+          break;
+
+        case MessageType.Add_ships:
+          handleAddShips(ws, parsedMessage);
+          break;
+
+        case MessageType.Attack:
+          handleAttack(parsedMessage);
+          break;
+
+        case MessageType.RandomAttack:
+          handleRandomAttack(parsedMessage);
+          break;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  ws.on('close', () => {
+    console.log(`Websocket server connection with id ${ws.id} was closed`);
+    const playerName = ws.playerName;
+    if (playerName) {
+      players.delete(playerName);
+    }
+  });
+});
+
+process.on('SIGINT', () => {
+  wss.clients.forEach((ws) => ws.close());
+  players.clear();
+  gameDb.clear();
+  rooms.clear();
+});
