@@ -1,14 +1,19 @@
 import {
+  AttackStatus,
   IAddShipsMessage,
   IAddUserToRoomMessage,
+  IAttackMessage,
+  IGameData,
+  IGamePlayersData,
+  IRandomAttackMessage,
   IRegMessage,
   IUpdateRoomData,
   IWebsocket,
   MessageType,
   RoomUser,
 } from '../types/types';
-import { v4 as uuidv4 } from 'uuid';
-import { convertRoomsMapToArr, createResponse, hasUserCreatedRoom, isPlayerExist } from '../utils';
+import { randomUUID } from 'crypto';
+import { convertRoomsMapToArr, createResponse, getCurGameId, hasUserCreatedRoom, isPlayerExist } from '../utils';
 import { gameDb, players, rooms } from '../db/db';
 import { wss } from '..';
 
@@ -19,7 +24,7 @@ const handleRegMessage = (ws: IWebsocket, parsedMessage: IRegMessage) => {
   if (!isPlayerExist(playerName)) {
     const regData = {
       name: playerName,
-      index: uuidv4(),
+      index: randomUUID(),
       error: false,
       errorText: '',
     };
@@ -53,7 +58,7 @@ const handleCreateRoomMessage = (ws: IWebsocket) => {
         ],
       };
 
-      rooms.set(uuidv4(), newRoom);
+      rooms.set(randomUUID(), newRoom);
 
       const roomsArr = convertRoomsMapToArr();
 
@@ -92,7 +97,7 @@ const handleAddUserToRoom = (ws: IWebsocket, parsedMessage: IAddUserToRoomMessag
 };
 
 const handleCreateGame = (roomUsers: RoomUser[]) => {
-  const idGame = uuidv4();
+  const idGame = randomUUID();
 
   roomUsers.forEach((roomUser) => {
     const gameData = {
@@ -134,9 +139,110 @@ const startGame = (gameId: string) => {
       const res = createResponse(MessageType.Start_game, playerGameData);
       player.ws.send(JSON.stringify(res));
     });
+    handleTurn(game.players[0], game);
   } else {
     console.error(`Game with id ${gameId} does not exist`);
   }
 };
 
-export { handleRegMessage, handleCreateRoomMessage, handleAddUserToRoom, handleAddShips };
+const handleTurn = (curPlayer: IGamePlayersData, game: IGameData) => {
+  game.players.forEach((player) => {
+    const res = createResponse(MessageType.Turn, { currentPlayer: curPlayer.indexPlayer });
+    player.ws.send(JSON.stringify(res));
+  });
+};
+
+const handleAttack = (parsedMessage: IAttackMessage) => {
+  const { indexPlayer: curPlayerId, gameId, x: attackX, y: attackY } = parsedMessage.data;
+
+  const game = gameDb.get(gameId) as IGameData;
+  const victim = game.players.find((player) => player.indexPlayer !== curPlayerId);
+
+  if (victim) {
+    if (attackX && attackY) {
+      const hasShotShip = victim.ships.find((ship) => {
+        if (ship.position.x === attackX && ship.position.y === attackY) {
+          return ship;
+        }
+        return null;
+      });
+
+      if (hasShotShip) {
+        const attackData = {
+          position: { x: attackX, y: attackY, status: AttackStatus.Shot },
+        };
+        game.players.forEach((player) => {
+          const response = createResponse(MessageType.Attack, { ...attackData, currentPlayer: player.indexPlayer });
+          player.ws.send(JSON.stringify(response));
+        });
+      } else {
+        const attackData = {
+          position: { x: attackX, y: attackY, status: AttackStatus.Miss },
+        };
+        game.players.forEach((player) => {
+          const response = createResponse(MessageType.Attack, { ...attackData, currentPlayer: player.indexPlayer });
+          player.ws.send(JSON.stringify(response));
+        });
+      }
+
+      const turnRes = createResponse(MessageType.Turn, {
+        currentPlayer: hasShotShip ? curPlayerId : victim.indexPlayer,
+      });
+
+      game.players.forEach((player) => {
+        player.ws.send(JSON.stringify(turnRes));
+      });
+    }
+  }
+};
+
+const handleRandomAttack = (parsedMessage: IRandomAttackMessage) => {
+  const { gameId, indexPlayer: curPlayerId } = parsedMessage.data;
+  const attackPosition = {
+    x: Math.floor(Math.random() * 11),
+    y: Math.floor(Math.random() * 11),
+  };
+
+  const game = gameDb.get(gameId) as IGameData;
+  const victim = game.players.find((player) => player.indexPlayer !== curPlayerId);
+  if (victim) {
+    const hasShotShip = victim.ships.find(
+      (ship) => ship.position.x === attackPosition.x && ship.position.y === attackPosition.y,
+    );
+
+    if (hasShotShip) {
+      const attackData = {
+        position: { x: attackPosition.x, y: attackPosition.y, status: AttackStatus.Shot },
+      };
+      game.players.forEach((player) => {
+        const response = createResponse(MessageType.Attack, { ...attackData, currentPlayer: player.indexPlayer });
+        player.ws.send(JSON.stringify(response));
+      });
+    } else {
+      const attackData = {
+        position: { x: attackPosition.x, y: attackPosition.y, status: AttackStatus.Miss },
+      };
+      game.players.forEach((player) => {
+        const response = createResponse(MessageType.Attack, { ...attackData, currentPlayer: player.indexPlayer });
+        player.ws.send(JSON.stringify(response));
+      });
+    }
+
+    const turnRes = createResponse(MessageType.Turn, { currentPlayer: hasShotShip ? curPlayerId : victim.indexPlayer });
+
+    game.players.forEach((player) => {
+      player.ws.send(JSON.stringify(turnRes));
+    });
+  } else {
+    console.error(`Player was not found`);
+  }
+};
+
+export {
+  handleRegMessage,
+  handleCreateRoomMessage,
+  handleAddUserToRoom,
+  handleAddShips,
+  handleAttack,
+  handleRandomAttack,
+};

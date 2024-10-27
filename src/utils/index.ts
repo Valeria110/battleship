@@ -1,5 +1,5 @@
 import { RawData } from 'ws';
-import { players, rooms } from '../db/db';
+import { gameDb, players, rooms } from '../db/db';
 import { IUpdateRoomData } from '../types/types';
 
 const parseMessage = (message: RawData) => {
@@ -40,4 +40,21 @@ const convertRoomsMapToArr = () => {
   return roomsArr;
 };
 
-export { parseMessage, createResponse, isPlayerExist, isCorrectPassword, hasUserCreatedRoom, convertRoomsMapToArr };
+const getCurGameId = (playerId: string): string | null => {
+  gameDb.forEach((value, key) => {
+    if (value.players.some((player) => player.indexPlayer === playerId)) {
+      return key;
+    }
+  });
+  return null;
+};
+
+export {
+  parseMessage,
+  createResponse,
+  isPlayerExist,
+  isCorrectPassword,
+  hasUserCreatedRoom,
+  convertRoomsMapToArr,
+  getCurGameId,
+};

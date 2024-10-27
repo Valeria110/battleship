@@ -5,12 +5,14 @@ import { parseMessage } from './utils';
 import {
   handleAddShips,
   handleAddUserToRoom,
+  handleAttack,
   handleCreateRoomMessage,
+  handleRandomAttack,
   handleRegMessage,
 } from './ws_server/hanldeMessages';
 import { IWebsocket, MessageType } from './types/types';
-import { v4 as uuidv4 } from 'uuid';
-import { players } from './db/db';
+import { gameDb, players, rooms } from './db/db';
+import { randomUUID } from 'crypto';
 
 const WS_PORT = Number(process.env.WS_PORT) | 3000;
 const HTTP_PORT = Number(process.env.HTTP_PORT) | 8181;
@@ -25,7 +27,8 @@ wss.on('listening', () => {
 });
 
 wss.on('connection', function connection(ws: IWebsocket) {
-  ws.id = uuidv4();
+  ws.id = randomUUID();
+
   ws.on('error', console.error);
 
   ws.on('message', function message(data) {
@@ -49,6 +52,14 @@ wss.on('connection', function connection(ws: IWebsocket) {
         case MessageType.Add_ships:
           handleAddShips(ws, parsedMessage);
           break;
+
+        case MessageType.Attack:
+          handleAttack(parsedMessage);
+          break;
+
+        case MessageType.RandomAttack:
+          handleRandomAttack(parsedMessage);
+          break;
       }
     } catch (err) {
       console.error(err);
@@ -67,4 +78,6 @@ wss.on('connection', function connection(ws: IWebsocket) {
 process.on('SIGINT', () => {
   wss.clients.forEach((ws) => ws.close());
   players.clear();
+  gameDb.clear();
+  rooms.clear();
 });

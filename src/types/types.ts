@@ -15,8 +15,15 @@ enum MessageType {
   Add_ships = 'add_ships',
   Start_game = 'start_game',
   Attack = 'attack',
+  RandomAttack = 'randomAttack',
   Turn = 'turn',
   Finish = 'finish',
+}
+
+enum AttackStatus {
+  Killed = 'killed',
+  Miss = 'miss',
+  Shot = 'shot',
 }
 
 interface IMessage {
@@ -40,6 +47,22 @@ interface IAddUserToRoomMessage extends IMessage {
 
 interface IAddShipsMessage extends IMessage {
   data: IGamePlayerData;
+}
+
+interface IAttackMessage extends IMessage {
+  data: {
+    gameId: string;
+    x: number;
+    y: number;
+    indexPlayer: string;
+  };
+}
+
+interface IRandomAttackMessage extends IMessage {
+  data: {
+    gameId: string;
+    indexPlayer: string;
+  };
 }
 
 interface IRegData {
@@ -102,4 +125,8 @@ export {
   IAddUserToRoomMessage,
   IGameData,
   IAddShipsMessage,
+  IGamePlayersData,
+  IAttackMessage,
+  AttackStatus,
+  IRandomAttackMessage,
 };
